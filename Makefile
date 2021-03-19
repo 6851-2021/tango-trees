@@ -15,6 +15,7 @@ main: main.cc $(OBJS)
 $(BUILD_DIR)/%.o: $(SRCS_DIR)/%.cc
 	mkdir -p build && $(CXX) $(CXXFLAGS) -c -o $@ $<
 
-clean: rm -rf $(BUILD_DIR) main
+clean:
+	rm -rf $(BUILD_DIR) main
 
 .PHONY: all clean
