@@ -63,6 +63,7 @@ template<typename K, typename V>
 void SplayTree<K, V>::insert(K key, V val) {
   if (this->root == nullptr) {
     this->root = new SplayNode<K, V>(key, val);
+    this->root->parent = nullptr;
     return;
   }
   SplayNode<K, V> *node = this->root->search(key);
