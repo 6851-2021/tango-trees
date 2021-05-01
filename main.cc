@@ -1,23 +1,37 @@
 #include "src/item.h"
 #include "src/splay.hpp"
+#include "src/rbtree.hpp"
+#include "src/bbtree.hpp"
+#include <vector>
 #include <iostream>
+#include <set>
+#include <stdlib.h>
+#include <time.h>
+#include <assert.h> 
 
 
 void splay_tree_test() {
-	SplayTree<int, int> T = SplayTree<int, int>();
-	T.insert(1, 1);
-	T.insert(2, 2);
-	T.insert(3, 3);
-	T.insert(4, 4);
-	T.insert(5, 5);
-	T.find(1)->println();
-    T.root->println();
-    T.find(3)->println();
-    T.root->println();
-    T.remove(2);
-    T.root->println();
-    T.remove(4);
-    T.root->println();
+  srand (time(NULL));
+  SplayTree<int, int> T = SplayTree<int, int>();
+  std::set<int> S; 
+  for (int i=0; i < 100; i++) {
+    int x = rand() % 50;
+    S.insert(x);
+    T.insert(x, x);
+  }
+  for (int i=0; i < 20; i++) {
+    int x = rand() % 50;
+    S.erase(x);
+    T.remove(x);
+  }
+  for (int i=0; i < 50; i++) {
+    auto t = T.find(i);
+    if (S.find(i) != S.end()) {
+      assert(t != nullptr);
+    } else {
+      assert(t == nullptr);
+    }
+  }  
 }
 
 int main(int argc, char** argv) {
