@@ -9,22 +9,24 @@
 #include <time.h>
 #include <assert.h> 
 
+bool DEBUG = false;
 
 void splay_tree_test() {
+  int N = 1000;
   srand (time(NULL));
   SplayTree<int, int> T = SplayTree<int, int>();
-  std::set<int> S; 
-  for (int i=0; i < 100; i++) {
-    int x = rand() % 50;
+  std::set<int> S;
+  for (int i=0; i < N; i++) {
+    int x = rand() % N;
     S.insert(x);
     T.insert(x, x);
   }
-  for (int i=0; i < 20; i++) {
-    int x = rand() % 50;
+  for (int i=0; i < N/2; i++) {
+    int x = rand() % N;
     S.erase(x);
     T.remove(x);
   }
-  for (int i=0; i < 50; i++) {
+  for (int i=0; i < N; i++) {
     auto t = T.find(i);
     if (S.find(i) != S.end()) {
       assert(t != nullptr);

@@ -92,6 +92,7 @@ void SplayTree<K, V>::remove(K key) {
   if (node->key == key) {
     splay(node);
     this->root = join(node->left, node->right);
+    this->root->parent = nullptr;
     // TODO: deallocate node?
   }
 }

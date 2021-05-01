@@ -211,7 +211,7 @@ BSTNode<K, V, A> *BSTNode<K, V, A>::search(K new_key) {
 template<typename K, typename V, typename A>
 BSTNode<K, V, A> *BSTNode<K, V, A>::min() {
   BSTNode<K, V, A> *current = this;
-  while (this->left != nullptr) {
+  while (current->left != nullptr) {
     current = current->left;
   }
   return current;
@@ -220,7 +220,7 @@ BSTNode<K, V, A> *BSTNode<K, V, A>::min() {
 template<typename K, typename V, typename A>
 BSTNode<K, V, A> *BSTNode<K, V, A>::max() {
   BSTNode<K, V, A> *current = this;
-  while (this->right != nullptr) {
+  while (current->right != nullptr) {
     current = current->right;
   }
   return current;
