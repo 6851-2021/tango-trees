@@ -22,28 +22,37 @@ public:
   BSTNode<K, V, None> *find(K key);
 };
 
+int rotations1 = 0;
+
 template<typename K, typename V>
-void splay(SplayNode<K, V> *node) {
-  if (node->parent == nullptr) {
-    return;
-  }
-  SplayNode<K, V> *p = node->parent;
+void splay_step(SplayNode<K, V> *node) {
+  auto p = node->parent;
   if (p->parent == nullptr) {
     // zig
     node->rotate();
+    rotations1 += 1;
     return;
   }
   if (node->is_left_child() == p->is_left_child()) {
     // zig-zig
     p->rotate();
     node->rotate();
+    rotations1 += 2;
   } else {
     // zig-zag
     node->rotate();
     node->rotate();
+    rotations1 += 2;
   }
-  splay(node);
 }
+
+template<typename K, typename V>
+void splay(SplayNode<K, V> *node) {
+  while (node->parent != nullptr) {
+    splay_step(node);
+  }
+}
+
 
 template<typename K, typename V>
 SplayNode<K, V> *join(SplayNode<K, V> *left, SplayNode<K, V> *right) {
@@ -94,7 +103,7 @@ void SplayTree<K, V>::remove(K key) {
     splay(node);
     this->root = join(node->left, node->right);
     this->root->parent = nullptr;
-    // TODO: deallocate node?
+    free(node);
   }
 }
 

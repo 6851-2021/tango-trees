@@ -229,11 +229,7 @@ BSTNode<K, V, A> *BSTNode<K, V, A>::max() {
 template<typename K, typename V, typename A>
 BSTNode<K, V, A> *BSTNode<K, V, A>::pred() {
   if (left != nullptr) {
-    auto current = left;
-    while (current->right != nullptr) {
-      current = current->right;
-    }
-    return current;
+    return left->max();
   }
   auto curr = this;
   while (curr->parent != nullptr) {
@@ -247,11 +243,7 @@ BSTNode<K, V, A> *BSTNode<K, V, A>::pred() {
 template<typename K, typename V, typename A>
 BSTNode<K, V, A> *BSTNode<K, V, A>::succ() {
   if (right != nullptr) {
-    auto current = right;
-    while (current->left != nullptr) {
-      current = current->left;
-    }
-    return current;
+    return right->min();
   }
   auto curr = this;
   while (curr->parent != nullptr) {
