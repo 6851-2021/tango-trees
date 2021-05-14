@@ -1,11 +1,12 @@
 #include "src/item.h"
 #include "src/multisplay.hpp"
+#include "src/rb.hpp"
 #include <vector>
 #include <iostream>
 #include <set>
 #include <stdlib.h>
 #include <time.h>
-#include <assert.h> 
+#include <assert.h>
 
 bool DEBUG = false;
 
@@ -65,6 +66,20 @@ void multi_splay_tree_test(int n) {
   auto elapsed = double(clock() - start) / CLOCKS_PER_SEC;
   std::cout << "MultiSplay tree find queries took " << elapsed << " seconds" << std::endl;
   //print(T.root);
+}
+
+void tango_tree_test(int n) {
+	TangoTree<int, int> T = TangoTree<int, int>();
+	for (int i = 0; i < n; i++) {
+		std::cout << "inserting " << i << std::endl;
+		T.insert(i, i);
+	}
+	T.lock();
+	T.unlock();
+	for (int i = 0; i < n; i++) {
+		std::cout << "removing " << i << std::endl;
+		T.remove(i);
+	}
 }
 
 void splay_tree_test(int N) {
@@ -136,18 +151,12 @@ void splay_tree_test(int N) {
 }
 
 int main(int argc, char** argv) {
-//  Item item1(5);
-//  Item::dump_stats();
-//  Item item2(6);
-//  Item item3(7);
-//  item2 < item1;
-//  item3 < item1;
-//  Item::dump_stats();
-//  Item::reset_stats();
-//  Item::dump_stats();
+  tango_tree_test(1000);
+  /*
   int n = 20;
   splay_tree_test((1 << n) - 1);
   multi_splay_tree_test(n);
   std::cout << "Number of nodes: " << (1 << n) - 1 << std::endl;
   std::cout << "Splay trees:  " << rotations1 << "\nMultiSplay trees: " << rotations2 << std::endl;
+  */
 }
