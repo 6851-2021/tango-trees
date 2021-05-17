@@ -40,6 +40,8 @@ private:
     void left_rotate(TangoNode<K, V> *x);
     void right_rotate(TangoNode<K, V> *x);
     void fixup(TangoNode<K, V> *x);
+  TangoNode<K, V> *concatenate(TangoNode<K, V>* root);
+  void split(TangoNode<K, V>* root, TangoNode<K, V>* pivot);
     bool locked = false;
     long size = 0;
     long deleted = 0;
@@ -139,11 +141,16 @@ void TangoTree<K, V>::insert(K key, V val) {
 
 template <typename K, typename V>
 void TangoTree<K, V>::fixup(TangoNode<K, V> *z) {
-	if (z == nullptr ||
-	    z->parent == nullptr ||
-	    z->parent->parent == nullptr) {
-		// No need to fix up small trees.
-		return;
+	if (z->info.marked ||
+	    z->parent->info.marked) {
+	  // No need to fix up small trees.
+	  if (z->info.marked) {
+	    z->info.red = false;
+	  }
+	  if (z->parent->info.marked) {
+	    z->parent->info.red = false;
+	  }
+	  return;
 	}
 	while (is_red(z->parent)) {
 		if (z->parent == z->parent->parent->left) {
@@ -188,7 +195,6 @@ void TangoTree<K, V>::fixup(TangoNode<K, V> *z) {
 			}
 		}
 	}
-	this->root->info.red = false;
 }
 
 template <typename K, typename V>
@@ -361,103 +367,248 @@ void TangoTree<K, V>::split(TangoNode<K, V> *root, TangoNode<K, V> *s) {
 }
 
 template <typename K, typename V>
-void TangoTree<K, V>::concatenate(TangoNode<K, V> *root) {
-	// These operations are O(log n) -- we can afford them once per split.
-	// According to CLRS(?), the black height of a regular red-black tree
-	// can be stored in O(1) space as global tree metadata. However, things
-	// get more complicated in our implicit tree-of-trees representation---
-	// it seems that we would need to store black height at each marked
-	// node.
-	if (root == nullptr) {
-		return;
-	}
-	int bh_left = black_height(root->left);
-	int bh_right = black_height(root->right);
-	TangoNode<K, V> *new_root = nullptr;
-	if (height_l > height_r) {
-		new_root = this->concatenate_left_bigger(
-			root, root->left, root->right
-		);
-		if (is_red(new_root) && is_red(new_root->right)) {
-			new_root->info.red = false;
-		}
-	} else if (height_r > height_l) {
-		new_root = this->concatenate_right_bigger(
-			root, root->left, root->right
-		);
-		if (is_red(new_root) && is_red(new_root->left)) {
-			new_root->info.red = false;
-		}
-	} else if (is_black(root->left) && is_black(root->right)) {
-		// TODO: is this even necessary for our purposes?
-		root->info.red = true;
-		return;
-	} else {
-		root->info.red = false;
-		return;
-	}
-	new_root->parent = root->parent;
-	if (root == this->root) {
-		this->root = new_root;
-	} else if (root->parent->left == root) {
-		root->parent->left = new_root;
-	} else {
-		root->parent->right = new_root;
-	}
+void set_children(TangoNode<K, V> *left, TangoNode<K, V> *root, TangoNode<K, V> *right) {
+  root->left = left;
+  root->right = right;
+  if (left != nullptr) { left->parent = root;}
+  if (right != nullptr) { right->parent = root;}
+}
+
+
+
+template <typename K, typename V>
+TangoNode<K, V> * TangoTree<K, V>::concatenate_right(TangoNode<K, V> *left, TangoNode<K, V> *pivot, TangoNode<K, V> *right) {
+  assert(pivot != nullptr);
+  int bh_left = black_height(left);
+  int bh_right = black_height(right);
+  if (bh_left == bh_right) {
+    pivot->left = left;
+    pivot->right = right;
+    pivot->info.red = true;
+    left->parent = pivot;
+    right->parent = pivot;
+    return pivot;
+  }
+  assert(left != nullptr);
+  auto t = concatenate_right(left->right, pivot, right);
+  assert(t != nullptr);
+  pivot->left = left;
+  pivot->right = t;
+  if (left != nullptr) {left->parent = pivot; }
+  if (t != nullptr) { t->parent = pivot; }
+  if (!left->info.red && t->info.red && is_red(t->right)) {
+    if (t->right != nullptr) {
+      t->right->info.red = false;
+    }
+    this->rotate(left);
+    return left;
+  }
+  return pivot;
+}
+
+template <typename K, typename V>
+TangoNode<K, V> * TangoTree<K, V>::concatenate_left(TangoNode<K, V> *left, TangoNode<K, V> *pivot, TangoNode<K, V> *right) {
+  assert(pivot != nullptr);
+  int bh_left = black_height(left);
+  int bh_right = black_height(right);
+  if (bh_left == bh_right) {
+    pivot->left = left;
+    pivot->right = right;
+    pivot->info.red = true;
+    left->parent = pivot;
+    right->parent = pivot;
+    return pivot;
+  }
+  assert(right != nullptr);
+  auto t = concatenate_left(left, pivot, right->left);
+  assert(t != nullptr);
+  pivot->right = right;
+  pivot->left = t;
+  if (right != nullptr) {right->parent = pivot; }
+  if (t != nullptr) { t->parent = pivot; }
+  if (!right->info.red && t->info.red && is_red(t->left)) {
+    if (t->left != nullptr) {
+      t->left->info.red = false;
+    }
+    this->rotate(right);
+    return right;
+  }
+  return pivot;
 }
 
 
 template <typename K, typename V>
-TangoNode<K, V> *
-TangoTree<K, V>::concatenate_left_bigger(TangoNode<K, V> *pivot,
-					 TangoNode<K, V> *left,
-					 TangoNode<K, V> *right) {
-	// TODO: (!!!) Querying the black height at each step leads to
-	// O(log^2 n) runtime.
-	int bh_left = black_height(left);
-	int bh_right = black_height(right);
-	if (bh_left == bh_right) {
-		pivot->left = left;
-		pivot->right = right;
-		pivot->info.color = red;
-		return pivot;
-	}
-	// TODO: decrement black heights as we go down the trees.
-	left->right = concatenate_left_bigger(pivot, left->right, right);
-	if (is_black(left) &&
-	    is_black(left->right) &&
-	    is_black(left->right->right)) {
-		left->right->right->info.red = false;
-		return this->rotate_left(left);
-	}
-	return left;
+TangoNode<K, V> TangoTree<K, V>::concatenate(TangoNode<K, V> *root) {
+  assert(root != nullptr);
+  int bh_left = black_height(root->left);
+  int bh_right = black_height(root->right);
+  if (bh_left > bh_right) {
+    auto t = concatenate_right(root->left, root, root->right);
+    if (t->info.red && !t->right->info.red) {
+      t->info.red = false;
+    }
+    return t;
+  } else if (bh_left < bh_right) {
+    auto t = concatenate_left(root->left, root, root->right);
+    if (t->info.red && !t->left->info.red) {
+      t->info.red = false;
+    }
+    return t;
+  } else if (is_black(root->left) && is_black(root->right)) {
+    root->info.red = true;
+  } else {
+    root->info.red = false;
+  }
+  return root;
+  
 }
 
 template <typename K, typename V>
-TangoNode<K, V> *
-TangoTree<K, V>::concatenate_right_bigger(TangoNode<K, V> *pivot,
-				  	  TangoNode<K, V> *left,
-				  	  TangoNode<K, V> *right) {
-	// TODO: (!!!) Querying the black height at each step leads to
-	// O(log^2 n) runtime.
-	int bh_left = black_height(left);
-	int bh_right = black_height(right);
-	if (bh_left == bh_right) {
-		pivot->left = left;
-		pivot->right = right;
-		pivot->info.color = red;
-		return pivot;
-	}
-	// TODO: decrement black heights as we go down the trees.
-	right->left = concatenate_right_bigger(pivot, left, right->left);
-	if (is_black(right) &&
-	    is_black(right->left) &&
-	    is_black(right->left->left)) {
-		right->left->left->info.red = false;
-		return this->rotate_right(right);
-	}
-	return right;
+TangoNode<K, V>* join_helper(TangoNode<K, V> *left, TangoNode<K, V> *root, TangoNode<K, V> *right) {
+  root->left = left;
+  root->right = right;
+  // update left parent pointers:
+
+  if (left->parent != nullptr) {
+    if (left->parent->left == left) {
+      left->parent->left = nullptr;
+    }
+    if (left->parent->right == left) {
+      left->parent->right = nullptr;
+    }
+  }
+
+  if (right->parent != nullptr) {
+    if (right->parent->left == right) {
+      right->parent->left = nullptr;
+    }
+    if (right->parent->right == right) {
+      right->parent->right = nullptr;
+    }
+  }
+  
+  left->parent = root;
+  right->parent = root;
+  return concatenate(root);
 }
+
+template <typename K, typename V>
+void TangoTree<K, V>::split(TangoNode<K, V> *root, TangoNode<K, V> *pivot) {
+  // pivot must a node be inside root
+  assert(root != nullptr && pivot != nullptr);
+  if (root == pivot) {
+    return;
+  }
+  if (pivot->key < root->key) {
+    auto t = split(root->left, pivot);
+    auto right_side = join_helper(t->right, root, root->right);
+    set_children(pivot, t->left, right_side);
+  }
+  else {
+    auto t = split(root->left, pivot);
+    auto right_side = join_helper(t->right, root, root->right);
+    set_children(pivot, t->left, right_side);
+  }
+}
+
+// template <typename K, typename V>
+// void TangoTree<K, V>::concatenate(TangoNode<K, V> *root) {
+// 	// These operations are O(log n) -- we can afford them once per split.
+// 	// According to CLRS(?), the black height of a regular red-black tree
+// 	// can be stored in O(1) space as global tree metadata. However, things
+// 	// get more complicated in our implicit tree-of-trees representation---
+// 	// it seems that we would need to store black height at each marked
+// 	// node.
+// 	if (root == nullptr) {
+// 		return;
+// 	}
+// 	int bh_left = black_height(root->left);
+// 	int bh_right = black_height(root->right);
+// 	TangoNode<K, V> *new_root = nullptr;
+// 	if (height_l > height_r) {
+// 		new_root = this->concatenate_left_bigger(
+// 			root, root->left, root->right
+// 		);
+// 		if (is_red(new_root) && is_red(new_root->right)) {
+// 			new_root->info.red = false;
+// 		}
+// 	} else if (height_r > height_l) {
+// 		new_root = this->concatenate_right_bigger(
+// 			root, root->left, root->right
+// 		);
+// 		if (is_red(new_root) && is_red(new_root->left)) {
+// 			new_root->info.red = false;
+// 		}
+// 	} else if (is_black(root->left) && is_black(root->right)) {
+// 		// TODO: is this even necessary for our purposes?
+// 		root->info.red = true;
+// 		return;
+// 	} else {
+// 		root->info.red = false;
+// 		return;
+// 	}
+// 	new_root->parent = root->parent;
+// 	if (root == this->root) {
+// 		this->root = new_root;
+// 	} else if (root->parent->left == root) {
+// 		root->parent->left = new_root;
+// 	} else {
+// 		root->parent->right = new_root;
+// 	}
+// }
+
+
+// template <typename K, typename V>
+// TangoNode<K, V> *
+// TangoTree<K, V>::concatenate_left_bigger(TangoNode<K, V> *pivot,
+// 					 TangoNode<K, V> *left,
+// 					 TangoNode<K, V> *right) {
+// 	// TODO: (!!!) Querying the black height at each step leads to
+// 	// O(log^2 n) runtime.
+// 	int bh_left = black_height(left);
+// 	int bh_right = black_height(right);
+// 	if (bh_left == bh_right) {
+// 		pivot->left = left;
+// 		pivot->right = right;
+// 		pivot->info.color = red;
+// 		return pivot;
+// 	}
+// 	// TODO: decrement black heights as we go down the trees.
+// 	left->right = concatenate_left_bigger(pivot, left->right, right);
+// 	if (is_black(left) &&
+// 	    is_black(left->right) &&
+// 	    is_black(left->right->right)) {
+// 		left->right->right->info.red = false;
+// 		return this->rotate_left(left);
+// 	}
+// 	return left;
+// }
+
+// template <typename K, typename V>
+// TangoNode<K, V> *
+// TangoTree<K, V>::concatenate_right_bigger(TangoNode<K, V> *pivot,
+// 				  	  TangoNode<K, V> *left,
+// 				  	  TangoNode<K, V> *right) {
+// 	// TODO: (!!!) Querying the black height at each step leads to
+// 	// O(log^2 n) runtime.
+// 	int bh_left = black_height(left);
+// 	int bh_right = black_height(right);
+// 	if (bh_left == bh_right) {
+// 		pivot->left = left;
+// 		pivot->right = right;
+// 		pivot->info.color = red;
+// 		return pivot;
+// 	}
+// 	// TODO: decrement black heights as we go down the trees.
+// 	right->left = concatenate_right_bigger(pivot, left, right->left);
+// 	if (is_black(right) &&
+// 	    is_black(right->left) &&
+// 	    is_black(right->left->left)) {
+// 		right->left->left->info.red = false;
+// 		return this->rotate_right(right);
+// 	}
+// 	return right;
+// }
 
 
 template <typename K, typename V>
@@ -473,10 +624,6 @@ void TangoTree<K, V>::unlock() {
 	this->rebuild();
 	this->locked = false;
 }
-
-
-template <typename K, typename V>
-void TangoTree<K, V>::unlock() {
 
 #endif
 
