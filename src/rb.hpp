@@ -2,6 +2,8 @@
 #include <vector>
 #include <algorithm>
 #include <iostream>
+#include <utility>
+
 using std::vector;
 
 #ifndef TANGO_TREES_RB_H
@@ -286,14 +288,14 @@ build_perfect(vector<TangoNode<K, V> *> &nodes,
         root->right = build_perfect(nodes, depth + 1, mid + 1, end);
 	root->info.min_depth = 0;
 	if (root->left != nullptr && root->right != nullptr) {
-		root->info.min_depth = std::min(root->right.info.min_depth,
-						root->left.info.min_depth) + 1;
-		root->info.max_depth = std::max(root->right.info.max_depth,
-						root->left.info.max_depth) + 1;
+		root->info.min_depth = std::min(root->right->info.min_depth,
+						root->left->info.min_depth) + 1;
+		root->info.max_depth = std::max(root->right->info.max_depth,
+						root->left->info.max_depth) + 1;
 	} else if (root->left != nullptr) {
-		root->info.max_depth = root->left.info.max_depth;
+		root->info.max_depth = root->left->info.max_depth;
 	} else if (root->right != nullptr) {
-		root->info.max_depth = root->right.info.max_depth;
+		root->info.max_depth = root->right->info.max_depth;
 	} else {
 		root->info.max_depth = 0;
 	} // TODO: update depths when doing tango operations.
@@ -311,60 +313,60 @@ int black_height(TangoNode<K, V> *node) {
 	return height;
 }
 
-template <typename K, typename V>
-void TangoTree<K, V>::split(TangoNode<K, V> *root, TangoNode<K, V> *s) {
-	/**
-	 * Splits a red-black tree, forming two separate red-black trees in the
-	 * tree of trees.
-	 *
-	 * In the tree of trees, `root` is replaced with `s`. The children of
-	 * `s` become a red-black tree with keys under `root` less than the
-	 * key of `s` (left) and a separate red-black tree, possibly of
-	 * different black height, with keys under `root` greater than the key
-	 * of `s` (right)
-	 *
-	 * @param root The root of the red-black tree (within the tree of trees)
-	 *     to split.
-	 * @param s The node to split on.
-	 * @return nothing -- the tree of trees is modified in place.
-	 */
-	if (root == nullptr || s == nullptr || root == s) {
-		// Note: splitting on a null pointer and splitting an empty tree
-		// are undefined behavior. More properly, we should throw an
-		// exception in those cases.
-		//
-		// The *real* base case is when the split node is equal to the
-		// root node, in which case there's no work to do.
-		return;
-	}
-	if (s->key < root->key) {
-		// The non-in-place version of this code (from Wikipedia) is
-		// something to the effect of:
-		//      (L',b,R') = split(L, k)
-		//      return (L',b,join(R',m,R))
-		// Instead of *returning* a modified version of root->left,
-		// we *replace* root in the tree of trees with a modified
-		// version of root->left.
-		auto parent = root->parent;
-		this->split(root->left, s);
-		// TODO: this function doesn't actually exist yet.
-		root->left->right = this->join(root->left->right,
-					       root,
-					       root->right);
-		root->left->parent = parent;
-		// TODO: Christian recommends we turn this into a helper.
-		if (parent == nullptr) {
-			this->root = root->left;
-		} else if (parent->left == root) {
-			parent->left = root->left;
-		} else {
-			parent->right = root->left;
-		}
-	} else {
-		// The s->key > root->key case is symmetric to above.
-	}
+// template <typename K, typename V>
+// void TangoTree<K, V>::split(TangoNode<K, V> *root, TangoNode<K, V> *s) {
+// 	/**
+// 	 * Splits a red-black tree, forming two separate red-black trees in the
+// 	 * tree of trees.
+// 	 *
+// 	 * In the tree of trees, `root` is replaced with `s`. The children of
+// 	 * `s` become a red-black tree with keys under `root` less than the
+// 	 * key of `s` (left) and a separate red-black tree, possibly of
+// 	 * different black height, with keys under `root` greater than the key
+// 	 * of `s` (right)
+// 	 *
+// 	 * @param root The root of the red-black tree (within the tree of trees)
+// 	 *     to split.
+// 	 * @param s The node to split on.
+// 	 * @return nothing -- the tree of trees is modified in place.
+// 	 */
+// 	if (root == nullptr || s == nullptr || root == s) {
+// 		// Note: splitting on a null pointer and splitting an empty tree
+// 		// are undefined behavior. More properly, we should throw an
+// 		// exception in those cases.
+// 		//
+// 		// The *real* base case is when the split node is equal to the
+// 		// root node, in which case there's no work to do.
+// 		return;
+// 	}
+// 	if (s->key < root->key) {
+// 		// The non-in-place version of this code (from Wikipedia) is
+// 		// something to the effect of:
+// 		//      (L',b,R') = split(L, k)
+// 		//      return (L',b,join(R',m,R))
+// 		// Instead of *returning* a modified version of root->left,
+// 		// we *replace* root in the tree of trees with a modified
+// 		// version of root->left.
+// 		auto parent = root->parent;
+// 		this->split(root->left, s);
+// 		// TODO: this function doesn't actually exist yet.
+// 		root->left->right = this->join(root->left->right,
+// 					       root,
+// 					       root->right);
+// 		root->left->parent = parent;
+// 		// TODO: Christian recommends we turn this into a helper.
+// 		if (parent == nullptr) {
+// 			this->root = root->left;
+// 		} else if (parent->left == root) {
+// 			parent->left = root->left;
+// 		} else {
+// 			parent->right = root->left;
+// 		}
+// 	} else {
+// 		// The s->key > root->key case is symmetric to above.
+// 	}
 
-}
+// }
 
 template <typename K, typename V>
 void set_children(TangoNode<K, V> *left, TangoNode<K, V> *root, TangoNode<K, V> *right) {
@@ -493,23 +495,40 @@ TangoNode<K, V>* join_helper(TangoNode<K, V> *left, TangoNode<K, V> *root, Tango
 }
 
 template <typename K, typename V>
-void TangoTree<K, V>::split(TangoNode<K, V> *root, TangoNode<K, V> *pivot) {
+pair<TangoNode<K, V>*, TangoNode<K, V>*> split_helper(TangoNode<K, V> *root, K key) {
   // pivot must a node be inside root
-  assert(root != nullptr && pivot != nullptr);
-  if (root == pivot) {
-    return;
+  assert(root != nullptr);
+  if (root->key == key) {
+    return make_pair<>(root->left, root->right);
   }
-  if (pivot->key < root->key) {
-    auto t = split(root->left, pivot);
-    auto right_side = join_helper(t->right, root, root->right);
-    set_children(pivot, t->left, right_side);
+  if (key < root->key) {
+    auto t = split(root->left, key);
+    auto right_side = join_helper(t.second, root, root->right);
+    return make_pair<>(t.first, right_side);
   }
   else {
-    auto t = split(root->left, pivot);
-    auto right_side = join_helper(t->right, root, root->right);
-    set_children(pivot, t->left, right_side);
+    auto t = split(root->right, key);
+    auto left_side = join_helper(root->left, root, t.first);
+    return make_pair<>(left_side, t.second);
   }
 }
+
+template <typename K, typename V>
+void TangoTree<K, V>::split(TangoNode<K, V> *root, TangoNode<K, V> *pivot) {
+  auto root_parent = root->parent;
+  auto result = split_helper(root, pivot->key);
+  set_children(result.first, pivot, result.right);
+  if (root_parent != nullptr) {
+    if (root_parent->left == root) {
+      root_parent->left = pivot;
+    }
+    else if (root_parent->right == root) {
+      root_parent->right = pivot;
+    }
+  }
+  pivot->parent = root_parent;
+}
+
 
 // template <typename K, typename V>
 // void TangoTree<K, V>::concatenate(TangoNode<K, V> *root) {
