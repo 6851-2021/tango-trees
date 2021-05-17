@@ -195,6 +195,7 @@ void TangoTree<K, V>::fixup(TangoNode<K, V> *z) {
 			}
 		}
 	}
+	this->root->info.red = false;
 }
 
 template <typename K, typename V>
