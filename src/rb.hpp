@@ -42,7 +42,10 @@ private:
     void left_rotate(TangoNode<K, V> *x);
     void right_rotate(TangoNode<K, V> *x);
     void fixup(TangoNode<K, V> *x);
+  TangoNode<K, V> *concatenate_left(TangoNode<K, V> *left, TangoNode<K, V> *pivot, TangoNode<K, V> *right);
+    TangoNode<K, V> * concatenate_right(TangoNode<K, V> *left, TangoNode<K, V> *pivot, TangoNode<K, V> *right);
   TangoNode<K, V> *concatenate(TangoNode<K, V>* root);
+  
   void split(TangoNode<K, V>* root, TangoNode<K, V>* pivot);
     bool locked = false;
     long size = 0;
@@ -143,16 +146,11 @@ void TangoTree<K, V>::insert(K key, V val) {
 
 template <typename K, typename V>
 void TangoTree<K, V>::fixup(TangoNode<K, V> *z) {
-	if (z->info.marked ||
-	    z->parent->info.marked) {
-	  // No need to fix up small trees.
-	  if (z->info.marked) {
-	    z->info.red = false;
-	  }
-	  if (z->parent->info.marked) {
-	    z->parent->info.red = false;
-	  }
-	  return;
+        if (z == nullptr ||
+	    z->parent == nullptr ||
+	    z->parent->parent == nullptr) {
+		// No need to fix up small trees.
+		return;
 	}
 	while (is_red(z->parent)) {
 		if (z->parent == z->parent->parent->left) {
@@ -393,19 +391,14 @@ TangoNode<K, V> * TangoTree<K, V>::concatenate_right(TangoNode<K, V> *left, Tang
   }
   assert(left != nullptr);
   auto t = concatenate_right(left->right, pivot, right);
+  set_children(left->left, left, t);
   assert(t != nullptr);
-  pivot->left = left;
-  pivot->right = t;
-  if (left != nullptr) {left->parent = pivot; }
-  if (t != nullptr) { t->parent = pivot; }
-  if (!left->info.red && t->info.red && is_red(t->right)) {
-    if (t->right != nullptr) {
-      t->right->info.red = false;
-    }
-    this->rotate(left);
-    return left;
+  if (!left->info.red && is_red(t) && is_red(t->right)) {
+    t->right->info.red = false;
+    this->left_rotate(left);
+    return left->parent;
   }
-  return pivot;
+  return left;
 }
 
 template <typename K, typename V>
@@ -423,36 +416,30 @@ TangoNode<K, V> * TangoTree<K, V>::concatenate_left(TangoNode<K, V> *left, Tango
   }
   assert(right != nullptr);
   auto t = concatenate_left(left, pivot, right->left);
-  assert(t != nullptr);
-  pivot->right = right;
-  pivot->left = t;
-  if (right != nullptr) {right->parent = pivot; }
-  if (t != nullptr) { t->parent = pivot; }
-  if (!right->info.red && t->info.red && is_red(t->left)) {
-    if (t->left != nullptr) {
-      t->left->info.red = false;
-    }
-    this->rotate(right);
-    return right;
+  set_children(t, right, right->right);
+  if (!right->info.red && is_red(t) && is_red(t->left)) {
+    t->left->info.red = false;
+    this->right_rotate(right);
+    return right->parent;
   }
-  return pivot;
+  return right;
 }
 
 
 template <typename K, typename V>
-TangoNode<K, V> TangoTree<K, V>::concatenate(TangoNode<K, V> *root) {
+TangoNode<K, V> *TangoTree<K, V>::concatenate(TangoNode<K, V> *root) {
   assert(root != nullptr);
   int bh_left = black_height(root->left);
   int bh_right = black_height(root->right);
   if (bh_left > bh_right) {
     auto t = concatenate_right(root->left, root, root->right);
-    if (t->info.red && !t->right->info.red) {
+    if (is_red(t) && is_red(t->right)) {
       t->info.red = false;
     }
     return t;
   } else if (bh_left < bh_right) {
     auto t = concatenate_left(root->left, root, root->right);
-    if (t->info.red && !t->left->info.red) {
+    if (is_red(t) && is_red(t->left)) {
       t->info.red = false;
     }
     return t;
@@ -495,7 +482,7 @@ TangoNode<K, V>* join_helper(TangoNode<K, V> *left, TangoNode<K, V> *root, Tango
 }
 
 template <typename K, typename V>
-pair<TangoNode<K, V>*, TangoNode<K, V>*> split_helper(TangoNode<K, V> *root, K key) {
+std::pair<TangoNode<K, V>*, TangoNode<K, V>*> split_helper(TangoNode<K, V> *root, K key) {
   // pivot must a node be inside root
   assert(root != nullptr);
   if (root->key == key) {
