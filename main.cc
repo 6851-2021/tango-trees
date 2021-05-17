@@ -91,7 +91,7 @@ void tango_tree_test(int n)
                 T.insert(i, i);
         }
         T.lock();
-        T.split_at(300);
+        T.split_at(7);
         /*
 	T.unlock();
 	for (int i = 0; i < n; i++) {
@@ -176,7 +176,7 @@ void splay_tree_test(int N)
 
 int main(int argc, char **argv)
 {
-        tango_tree_test(1000);
+        tango_tree_test(31);
         /*
   int n = 20;
   splay_tree_test((1 << n) - 1);

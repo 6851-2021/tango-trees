@@ -5,7 +5,7 @@ SRCS := $(wildcard $(SRCS_DIR)/*.cc)
 OBJS := $(subst $(SRCS_DIR),$(BUILD_DIR),$(SRCS))
 OBJS := $(OBJS:.cc=.o)
 
-override CXXFLAGS += -Wall -Wextra -O0 -Wshadow -std=c++14
+override CXXFLAGS += -Wall -Wextra -g -Wshadow -std=c++14
 
 all: main
 
