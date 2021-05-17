@@ -17,6 +17,8 @@ public:
 
   BSTNode(K key, V val, A info);
 
+  void print(int depth);
+  
   void print();
 
   void println();
@@ -110,23 +112,32 @@ BSTNode<K, V, A>::BSTNode(K key, V val, A info) {
 }
 
 template<typename K, typename V, typename A>
-void BSTNode<K, V, A>::print() {
-
-  std::cout << "(" << val << ", [l: ";
-  if (left != nullptr) {
-    left->print();
+void BSTNode<K, V, A>::print(int depth) {
+  auto node = this;
+  for (int i=0; i < depth; i++) {
+    std::cout << "  ";
+  }
+  std::cout << "(" << node->val << ", [l: ";
+  if (node->left != nullptr) {
+    std::cout << node->left->val;
   }
   std::cout << "], [r: ";
-  if (right != nullptr) {
-    right->print();
+  if (node->right != nullptr) {
+    std::cout << node->right->val;
   }
   std::cout << "], [p: ";
-  if (parent != nullptr) {
-    std::cout << parent->val;
-  } else {
-    std::cout << "null";
+  if (node->parent != nullptr) {
+    std::cout << node->parent->val;
   }
   std::cout << "])";
+  std::cout << "\n";
+  if (node->left != nullptr) { node->left->print(depth + 1); }
+  if (node->right != nullptr) { node->right->print(depth + 1); }
+}
+
+template<typename K, typename V, typename A>
+void BSTNode<K, V, A>::print() {
+  print(0);
 }
 
 template<typename K, typename V, typename A>
@@ -134,6 +145,7 @@ void BSTNode<K, V, A>::println() {
   print();
   std::cout << std::endl;
 }
+
 
 template<typename K, typename V, typename A>
 void BSTNode<K, V, A>::replace(BSTNode<K, V, A>* node) {
@@ -193,18 +205,22 @@ void BSTNode<K, V, A>::rotate() {
 
 template<typename K, typename V, typename A>
 BSTNode<K, V, A> *BSTNode<K, V, A>::search(K new_key) {
-  if (new_key == this->key) {
-    return this;
-  } else if (new_key < this->key) {
-    if (this->left != nullptr) {
-      return this->left->search(new_key);
+  auto curr = this;
+  while (true) {
+    if (new_key == curr->key) {
+      return curr;
     }
-    return this;
-  } else {
-    if (this->right != nullptr) {
-      return this->right->search(new_key);
+    if (new_key < curr->key) {
+      if (curr->left == nullptr) {
+	return curr;
+      }
+      curr = curr->left;
+    } else {
+      if (curr->right == nullptr) {
+	return curr;
+      }
+      curr = curr->right;
     }
-    return this;
   }
 }
 

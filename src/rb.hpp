@@ -62,13 +62,48 @@ template <typename K, typename V> class TangoTree : public BST<K, V, TInfo> {
         TangoTree() : BST<K, V, TInfo>()
         {
         }
+        void print();
         void insert(K key, V val);
         void remove(K key);
         void lock();
         void unlock();
 	std::pair<TangoNode<K, V> *, TangoNode<K, V> *> split_at(K key);
+  void cut(TangoNode<K, V> * root, int depth);
+  void join(TangoNode<K, V> * root, TangoNode<K, V> * other);
         TangoNode<K, V> *find(K key);
 };
+
+
+template<typename K, typename V>
+void print_with_depth(TangoNode<K, V>* node, int depth) {
+  if (node == nullptr) {
+    return;
+  }
+  for (int i=0; i < depth; i++) {
+    std::cout << "    ";
+  }
+  std::cout << "(" << node->val << ", [l: ";
+  if (node->left != nullptr) { std::cout << node->left->val; }
+  std::cout << "], [r: ";
+  if (node->right != nullptr) { std::cout << node->right->val; }
+  std::cout << "], [p: ";
+  if (node->parent != nullptr) { std::cout << node->parent->val; }
+  std::cout << "], [mk: " << node->info.marked << "], [mind: " << node->info.min_depth;
+  std::cout << "], [maxd: " << node->info.max_depth << "], [depth: ";
+  std::cout << node->info.perfect_depth << "])\n";
+  print_with_depth(node->left, depth + 1);
+  print_with_depth(node->right, depth + 1);
+}
+
+template <typename K, typename V>
+void TangoTree<K, V>::print() {
+  print_with_depth(this->root, 0);
+}
+
+template <typename K, typename V>
+void print_node(TangoNode<K, V>* node) {
+  print_with_depth(node, 0);
+}
 
 template <typename K, typename V> bool is_black(TangoNode<K, V> *node)
 {
@@ -101,6 +136,27 @@ TangoTree<K, V>::split_at(K key) {
 }
 
 template <typename K, typename V>
+void recompute(TangoNode<K, V>* node) {
+  auto mindepth = node->info.perfect_depth;
+  if (node->left != nullptr && !node->left->info.marked && node->left->info.min_depth < mindepth) {
+    mindepth = node->left->info.min_depth;
+  }
+  if (node->right != nullptr && !node->right->info.marked && node->right->info.min_depth < mindepth) {
+    mindepth = node->right->info.min_depth;
+  }
+  node->info.min_depth = mindepth;
+
+  auto maxdepth = node->info.perfect_depth;
+  if (node->left != nullptr && !node->left->info.marked && node->left->info.max_depth > maxdepth) {
+    maxdepth = node->left->info.max_depth;
+  }
+  if (node->right != nullptr && !node->right->info.marked && node->right->info.max_depth < maxdepth) {
+    maxdepth = node->right->info.max_depth;
+  }
+  node->info.max_depth = maxdepth;
+}
+
+template <typename K, typename V>
 void TangoTree<K, V>::left_rotate(TangoNode<K, V> *x)
 {
         auto y = x->right;
@@ -118,6 +174,9 @@ void TangoTree<K, V>::left_rotate(TangoNode<K, V> *x)
         }
         y->left = x;
         x->parent = y;
+	y->info.min_depth = x->info.min_depth;
+	y->info.max_depth = x->info.max_depth;
+	recompute(x);
 }
 
 template <typename K, typename V>
@@ -138,6 +197,9 @@ void TangoTree<K, V>::right_rotate(TangoNode<K, V> *x)
         }
         y->right = x;
         x->parent = y;
+	y->info.min_depth = x->info.min_depth;
+	y->info.max_depth = x->info.max_depth;
+	recompute(x);
 }
 
 template <typename K, typename V> void TangoTree<K, V>::insert(K key, V val)
@@ -264,7 +326,7 @@ template <typename K, typename V> void TangoTree<K, V>::rebuild()
         }
         vector<TangoNode<K, V> *> in_order;
         in_order_traverse(this->root, in_order);
-        this->root = build_perfect(in_order, 0, 0, in_order.size());
+        this->root = build_perfect(in_order, 0, 0, in_order.size(), (TangoNode<K, V>*) nullptr);
         this->size -= this->deleted;
         this->deleted = 0;
 }
@@ -285,7 +347,7 @@ void in_order_traverse(TangoNode<K, V> *root, vector<TangoNode<K, V> *> &nodes)
 
 template <typename K, typename V>
 TangoNode<K, V> *build_perfect(vector<TangoNode<K, V> *> &nodes, int depth,
-                               long start, long end)
+                               long start, long end, TangoNode<K, V>* parent)
 {
         /**
 	 * Builds a perfect red-black tree from an arbitrary tango tree.
@@ -308,23 +370,36 @@ TangoNode<K, V> *build_perfect(vector<TangoNode<K, V> *> &nodes, int depth,
         root->info.marked = false;
         root->info.perfect_depth = depth;
         root->info.red = depth % 2 == 1;
-        root->left = build_perfect(nodes, depth + 1, start, mid);
-        root->right = build_perfect(nodes, depth + 1, mid + 1, end);
-        root->info.min_depth = 0;
-        if (root->left != nullptr && root->right != nullptr) {
-                root->info.min_depth = std::min(root->right->info.min_depth,
-                                                root->left->info.min_depth) +
-                                       1;
-                root->info.max_depth = std::max(root->right->info.max_depth,
-                                                root->left->info.max_depth) +
-                                       1;
-        } else if (root->left != nullptr) {
-                root->info.max_depth = root->left->info.max_depth;
-        } else if (root->right != nullptr) {
-                root->info.max_depth = root->right->info.max_depth;
-        } else {
-                root->info.max_depth = 0;
-        } // TODO: update depths when doing tango operations.
+	root->parent = parent;
+        root->left = build_perfect(nodes, depth + 1, start, mid, root);
+        root->right = build_perfect(nodes, depth + 1, mid + 1, end, root);
+	root->info.min_depth = depth;
+	root->info.max_depth = depth;
+
+	// Hack to compute depths for perfect bst
+	if (root->left != nullptr) {
+	  root->info.max_depth = root->left->info.max_depth;
+	}
+	if (root->right != nullptr) {
+	  root->info.max_depth = root->right->info.max_depth;
+	}
+	
+        // if (root->left != nullptr && root->right != nullptr) {
+        //         root->info.min_depth = std::min(root->right->info.min_depth,
+        //                                         root->left->info.min_depth) +
+        //                                1;
+	        
+        //         root->info.max_depth = std::max(root->right->info.max_depth,
+        //                                         root->left->info.max_depth) +
+        //                                1;
+        // } else if (root->left != nullptr) {
+        //         root->info.max_depth = root->left->info.max_depth;
+        // } else if (root->right != nullptr) {
+        //         root->info.max_depth = root->right->info.max_depth;
+        // } else {
+        //         root->info.max_depth = 0;
+        // } 
+	// TODO: update depths when doing tango operations.
         return root;
 }
 
@@ -395,6 +470,7 @@ void set_children(TangoNode<K, V> *left, TangoNode<K, V> *root,
         if (right != nullptr) {
                 right->parent = root;
         }
+        recompute(root);
 }
 
 template <typename K, typename V>
@@ -477,8 +553,9 @@ TangoNode<K, V> *TangoTree<K, V>::join_helper(TangoNode<K, V> *left,
 					      TangoNode<K, V> *root,
 					      TangoNode<K, V> *right)
 {
-        root->left = left;
-        root->right = right;
+        // if (left != nullptr) {left->println(); }
+	// root->println();
+        // if (right != nullptr) { right->println(); }
 
         if (left != nullptr && left->parent != nullptr) {
                 if (left->parent->left == left) {
@@ -487,6 +564,7 @@ TangoNode<K, V> *TangoTree<K, V>::join_helper(TangoNode<K, V> *left,
                 if (left->parent->right == left) {
                         left->parent->right = nullptr;
                 }
+		recompute(left->parent);
         }
 
         if (right != nullptr && right->parent != nullptr) {
@@ -496,33 +574,50 @@ TangoNode<K, V> *TangoTree<K, V>::join_helper(TangoNode<K, V> *left,
                 if (right->parent->right == right) {
                         right->parent->right = nullptr;
                 }
+		recompute(right->parent);
         }
 
+	root->left = left;
+        root->right = right;
+
+        recompute(root);
+	
 	if (left != nullptr) {
 		left->parent = root;
 	}
 	if (right != nullptr) {
 		right->parent = root;
 	}
-        return this->concatenate(root);
+	// std::cout << "Join helper before concat:\n";
+	// if (left != nullptr) {left->println(); }
+	// root->println();
+        // if (right != nullptr) { right->println(); }
+        auto r = this->concatenate(root);
+	// std::cout << "Join helper after concat:\n";
+	// if (r != nullptr) {r->println(); }
+	return r;
 }
 
 template <typename K, typename V>
 std::pair<TangoNode<K, V> *, TangoNode<K, V> *>
 TangoTree<K, V>::split_helper(TangoNode<K, V> *root, K key)
 {
-        // pivot must a node be inside root
+        // pivot must a node be inside root  
         assert(root != nullptr);
-	std::cout << "splitting at " << root->key << std::endl;
+	// std::cout << "splitting at " << root->key << std::endl;
         if (root->key == key) {
                 return make_pair<>(root->left, root->right);
         }
         if (key < root->key) {
                 auto t = split_helper(root->left, key);
-                auto right_side = join_helper(t.second, root, root->right);
+		// std::cout << "split result left :\n";
+		// this->print();
+		auto right_side = join_helper(t.second, root, root->right);
                 return make_pair<>(t.first, right_side);
         } else {
                 auto t = split_helper(root->right, key);
+		// std::cout << "split result right:\n";
+		// this->print();
                 auto left_side = join_helper(root->left, root, t.first);
                 return make_pair<>(left_side, t.second);
         }
@@ -534,6 +629,9 @@ void TangoTree<K, V>::split(TangoNode<K, V> *root, TangoNode<K, V> *pivot)
         auto root_parent = root->parent;
         auto result = split_helper(root, pivot->key);
         set_children(result.first, pivot, result.second);
+	// std::cout << "root: " << root->val;
+	// this->print();
+	if (root_parent == nullptr) { this->root = pivot; }
         if (root_parent != nullptr) {
                 if (root_parent->left == root) {
                         root_parent->left = pivot;
@@ -542,6 +640,21 @@ void TangoTree<K, V>::split(TangoNode<K, V> *root, TangoNode<K, V> *pivot)
                 }
         }
         pivot->parent = root_parent;
+}
+
+template <typename K, typename V>
+void TangoTree<K, V>::cut(TangoNode<K, V> *root, int depth) {
+
+
+
+}
+
+
+template <typename K, typename V>
+void TangoTree<K, V>::join(TangoNode<K, V> *root, TangoNode<K, V> *other) {
+
+
+
 }
 
 // template <typename K, typename V>

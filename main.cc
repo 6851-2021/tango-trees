@@ -91,7 +91,11 @@ void tango_tree_test(int n)
                 T.insert(i, i);
         }
         T.lock();
+	T.print();
         T.split_at(7);
+	T.print();
+	T.split_at(0);
+	T.print();
         /*
 	T.unlock();
 	for (int i = 0; i < n; i++) {
