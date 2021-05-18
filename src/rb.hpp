@@ -157,6 +157,17 @@ void recompute(TangoNode<K, V>* node) {
 }
 
 template <typename K, typename V>
+void recompute_all(TangoNode<K, V>* node) {
+	// Recomputes min/max depth augmentation all the way up the tree.
+	if (node != nullptr) {
+		recompute(node);
+		if (!node->info.marked) {
+			recompute_all(node->parent);
+		}
+	}
+}
+
+template <typename K, typename V>
 void TangoTree<K, V>::left_rotate(TangoNode<K, V> *x)
 {
         auto y = x->right;
@@ -172,6 +183,10 @@ void TangoTree<K, V>::left_rotate(TangoNode<K, V> *x)
         } else {
                 x->parent->right = y;
         }
+	if (x->info.marked) {
+		x->info.marked = false;
+		y->info.marked = true;
+	}
         y->left = x;
         x->parent = y;
 	y->info.min_depth = x->info.min_depth;
@@ -195,6 +210,10 @@ void TangoTree<K, V>::right_rotate(TangoNode<K, V> *x)
         } else {
                 x->parent->left = y;
         }
+	if (x->info.marked) {
+		x->info.marked = false;
+		y->info.marked = true;
+	}
         y->right = x;
         x->parent = y;
 	y->info.min_depth = x->info.min_depth;
@@ -471,7 +490,7 @@ void set_children(TangoNode<K, V> *left, TangoNode<K, V> *root,
         if (right != nullptr) {
                 right->parent = root;
         }
-        recompute(root);
+        recompute_all(root);
 }
 
 template <typename K, typename V>
@@ -549,6 +568,24 @@ TangoNode<K, V> *TangoTree<K, V>::concatenate(TangoNode<K, V> *root)
         return root;
 }
 
+
+template <typename K, typename V>
+void replace_child(TangoNode<K, V> *old_child, TangoNode<K, V> *new_child)
+{
+        if (old_child != nullptr && old_child->parent != nullptr) {
+                if (old_child->parent->left == old_child) {
+                        old_child->parent->left = new_child;
+                }
+                if (old_child->parent->right == old_child) {
+                        old_child->parent->right = new_child;
+                }
+		if (new_child != nullptr) {
+			new_child->parent = old_child->parent;
+		}
+		recompute_all(old_child->parent);
+        }
+}
+
 template <typename K, typename V>
 TangoNode<K, V> *TangoTree<K, V>::join_helper(TangoNode<K, V> *left,
 					      TangoNode<K, V> *root,
@@ -557,32 +594,12 @@ TangoNode<K, V> *TangoTree<K, V>::join_helper(TangoNode<K, V> *left,
         // if (left != nullptr) {left->println(); }
 	// root->println();
         // if (right != nullptr) { right->println(); }
-
-        if (left != nullptr && left->parent != nullptr) {
-                if (left->parent->left == left) {
-                        left->parent->left = nullptr;
-                }
-                if (left->parent->right == left) {
-                        left->parent->right = nullptr;
-                }
-		recompute(left->parent);
-        }
-
-        if (right != nullptr && right->parent != nullptr) {
-                if (right->parent->left == right) {
-                        right->parent->left = nullptr;
-                }
-                if (right->parent->right == right) {
-                        right->parent->right = nullptr;
-                }
-		recompute(right->parent);
-        }
-
+	replace_child(left,  (TangoNode<K, V> *) nullptr);
+	replace_child(right, (TangoNode<K, V> *) nullptr);
 	root->left = left;
         root->right = right;
+        recompute_all(root);
 
-        recompute(root);
-	
 	if (left != nullptr) {
 		left->parent = root;
 	}
@@ -674,7 +691,8 @@ TangoNode<K, V> * predecessor(TangoNode<K, V> *node) {
   }
   if (node->left != nullptr) {
     auto curr = node->left;
-    while (curr != nullptr && !curr->info.marked) {
+    while (curr != nullptr && !curr->info.marked &&
+	   curr->right != nullptr && !curr->right->info.marked) {
       curr = curr->right;
     }
     return curr;
@@ -697,7 +715,8 @@ TangoNode<K, V> * successor(TangoNode<K, V> *node) {
   }
   if (node->right != nullptr) {
     auto curr = node->right;
-    while (curr != nullptr && !curr->info.marked) {
+    while (curr != nullptr && curr->left != nullptr &&
+	   !curr->info.marked && !curr->left->info.marked) {
       curr = curr->left;
     }
     return curr;
@@ -715,18 +734,45 @@ TangoNode<K, V> * successor(TangoNode<K, V> *node) {
 
 template <typename K, typename V>
 void TangoTree<K, V>::cut(TangoNode<K, V> *root, int depth) {
-
   assert(root->info.marked);
-  auto l = leftmost(root);
-  auto r = rightmost(root);
+  auto l = predecessor(leftmost(root)); // l'
+  auto r = successor(rightmost(root));  // r'
 
-  
-  
+  if (l != nullptr && r != nullptr) {
+	  // Range is (l, r).
+	  this->split(root, l);
+	  this->split(l->right, r);
+	  if (r->left != nullptr) {
+		  r->left->info.marked = true;
+	  }
+	  recompute_all(r);
+	  recompute_all(l);
+	  set_children(l->left, l, concatenate(r)); // right concat
+	  replace_child(l, concatenate(l)); // left concat
+
+  } else if (l != nullptr) {
+	  // Range is (l, ∞) -- left split only.
+	  this->split(root, l);
+	  if (l->right != nullptr) {
+		  l->right->info.marked = true;
+	  }
+	  recompute_all(l);
+	  replace_child(l, concatenate(l)); // left concat
+  } else if (r != nullptr) {
+	  // Range is (-∞, r) -- right split only.
+	  this->split(root, r);
+	  if (r->left != nullptr) {
+		  r->left->info.marked = true;
+	  }
+	  recompute_all(r);
+	  replace_child(r, concatenate(r)); // right concat
+  }
+  // For (-∞, ∞), we do nothing.
 }
-
 
 template <typename K, typename V>
 void TangoTree<K, V>::join(TangoNode<K, V> *root, TangoNode<K, V> *other) {
+
 
 
 

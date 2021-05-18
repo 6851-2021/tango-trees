@@ -96,7 +96,10 @@ void tango_tree_test(int n)
 	T.print();
 	T.split_at(3);
 	T.print();
+        predecessor(T.root)->print();
+	std::cout << "-------" << std::endl;
         successor(T.root)->print();
+	//successor(T.root);
         /*
 	T.unlock();
 	for (int i = 0; i < n; i++) {
