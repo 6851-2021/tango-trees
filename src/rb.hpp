@@ -80,7 +80,7 @@ void print_with_depth(TangoNode<K, V>* node, int depth) {
     return;
   }
   for (int i=0; i < depth; i++) {
-    std::cout << "    ";
+    std::cout << "  ";
   }
   std::cout << "(" << node->val << ", [l: ";
   if (node->left != nullptr) { std::cout << node->left->val; }
@@ -327,6 +327,7 @@ template <typename K, typename V> void TangoTree<K, V>::rebuild()
         vector<TangoNode<K, V> *> in_order;
         in_order_traverse(this->root, in_order);
         this->root = build_perfect(in_order, 0, 0, in_order.size(), (TangoNode<K, V>*) nullptr);
+	this->root->info.marked = true;
         this->size -= this->deleted;
         this->deleted = 0;
 }
@@ -642,11 +643,85 @@ void TangoTree<K, V>::split(TangoNode<K, V> *root, TangoNode<K, V> *pivot)
         pivot->parent = root_parent;
 }
 
+
+template <typename K, typename V>
+TangoNode<K, V> * leftmost(TangoNode<K, V> *node, int depth) {
+  if (node == nullptr || node->info.marked || node->info.max_depth <= depth) {
+    return nullptr;
+  }
+  auto left = leftmost(node->left, depth);
+  if (left != nullptr) { return left; }
+  if (node->info.depth > depth) { return node; }
+  return leftmost(node->right, depth);
+}
+
+
+template <typename K, typename V>
+TangoNode<K, V> * rightmost(TangoNode<K, V> *node, int depth) {
+  if (node == nullptr || node->info.marked || node->info.max_depth <= depth) {
+    return nullptr;
+  }
+  auto right = rightmost(node->right, depth);
+  if (right != nullptr) { return right; }
+  if (node->info.depth > depth) { return node; }
+  return rightmost(node->left, depth);
+}
+
+template <typename K, typename V>
+TangoNode<K, V> * predecessor(TangoNode<K, V> *node) {
+  if (node == nullptr) {
+    return nullptr;
+  }
+  if (node->left != nullptr) {
+    auto curr = node->left;
+    while (curr != nullptr && !curr->info.marked) {
+      curr = curr->right;
+    }
+    return curr;
+  } else {
+    auto curr = node;
+    while (curr->parent != nullptr && !curr->info.marked) {
+      if (curr->parent->right == curr) {
+	return curr->parent;
+      }
+      curr = curr->parent;
+    }
+    return nullptr;
+  }
+}
+
+template <typename K, typename V>
+TangoNode<K, V> * successor(TangoNode<K, V> *node) {
+  if (node == nullptr) {
+    return nullptr;
+  }
+  if (node->right != nullptr) {
+    auto curr = node->right;
+    while (curr != nullptr && !curr->info.marked) {
+      curr = curr->left;
+    }
+    return curr;
+  } else {
+    auto curr = node;
+    while (curr->parent != nullptr && !curr->info.marked) {
+      if (curr->parent->left == curr) {
+	return curr->parent;
+      }
+      curr = curr->parent;
+    }
+    return nullptr;
+  }
+}
+
 template <typename K, typename V>
 void TangoTree<K, V>::cut(TangoNode<K, V> *root, int depth) {
 
+  assert(root->info.marked);
+  auto l = leftmost(root);
+  auto r = rightmost(root);
 
-
+  
+  
 }
 
 
