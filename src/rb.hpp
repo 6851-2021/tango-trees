@@ -167,10 +167,14 @@ void recompute_all(TangoNode<K, V>* node) {
       break;
     }
     curr = curr->parent;
-    if (curr == node) {
-      std::cout << "Fail!!!!!\n";
-      throw;
-    }
+    // if (curr == node) {
+      
+    //   std::cout << "Fail!!!!!\n";
+    //   print_node(node);
+    //   print_node(node->parent);
+      
+    //   throw;
+    // }
   }
 }
 
@@ -498,8 +502,8 @@ void set_children(TangoNode<K, V> *left, TangoNode<K, V> *root,
         if (right != nullptr) {
                 right->parent = root;
         }
-	std::cout << "set children\n";
-        print_node(root);
+	// std::cout << "set children\n";
+        // print_node(root);
         recompute_all(root);
 }
 
@@ -530,23 +534,24 @@ TangoNode<K, V> *TangoTree<K, V>::concatenate_right(TangoNode<K, V> *left,
         assert(pivot != nullptr);
         int bh_left = black_height(left);
         int bh_right = black_height(right);
+	// std::cout << "concat_right call on:\n";
+        // print_node(left);
+	// print_node(pivot);
+        // print_node(right);
+	// std::cout << "bh_left: " << bh_left << ", bh_right: " << bh_right << std::endl;
         if (bh_left == bh_right) {
 		set_children(left, pivot, right);
                 pivot->info.red = true;
                 return pivot;
         }
         assert(left != nullptr);
-	std::cout << "concat_right1";
-        print_node(left);
-	print_node(pivot);
-        print_node(right);
-        
+	
         auto t = concatenate_right(left->right, pivot, right);
-	std::cout << "concat_right2";
-        print_node(left->left);
-	print_node(left);
-	print_node(t);
-	std::cout << "end concat_right";
+	// std::cout << "concat_right2";
+        // print_node(left->left);
+	// print_node(left);
+	// print_node(t);
+	// std::cout << "end concat_right\n";
         set_children(left->left, left, t);
         assert(t != nullptr);
         if (is_black(left) && is_red(t) && is_red(t->right)) {
@@ -565,6 +570,11 @@ TangoNode<K, V> *TangoTree<K, V>::concatenate_left(TangoNode<K, V> *left,
         assert(pivot != nullptr);
         int bh_left = black_height(left);
         int bh_right = black_height(right);
+	// std::cout << "concat_left call on:\n";
+        // print_node(left);
+	// print_node(pivot);
+        // print_node(right);
+	// std::cout << "bh_left: " << bh_left << ", bh_right: " << bh_right << std::endl;
         if (bh_left == bh_right) {
 		set_children(left, pivot, right);
                 pivot->info.red = true;
@@ -573,11 +583,12 @@ TangoNode<K, V> *TangoTree<K, V>::concatenate_left(TangoNode<K, V> *left,
         assert(right != nullptr);
         	
         auto t = concatenate_left(left, pivot, right->left);
-	std::cout << "concat_left";
-        print_node(t);
-	print_node(right);
-	print_node(right->right);
-	std::cout << "end concat_left";
+	// std::cout << "concat_left";
+        // print_node(t);
+	// print_node(right);
+	// if (right->parent) {std::cout << "right_parent"; print_node(right->parent); }
+	// print_node(right->right);
+	// std::cout << "end concat_left\n";
         set_children(t, right, right->right);
         if (is_black(right) && is_red(t) && is_red(t->left)) {
                 t->left->info.red = false;
@@ -594,13 +605,25 @@ TangoNode<K, V> *TangoTree<K, V>::concatenate(TangoNode<K, V> *root)
         int bh_left = black_height(root->left);
         int bh_right = black_height(root->right);
         if (bh_left > bh_right) {
-                auto t = concatenate_right(root->left, root, root->right);
+	  
+	  auto left = root->left;
+	  auto right = root->right;
+	  set_children((TangoNode<K, V> *)nullptr, root, (TangoNode<K, V> *) nullptr);
+	  if (left != nullptr) {left->parent = nullptr;}
+	  if (right != nullptr) {right->parent = nullptr;}
+                auto t = concatenate_right(left, root, right);
                 if (is_red(t) && is_red(t->right)) {
                         t->info.red = false;
                 }
                 return t;
         } else if (bh_left < bh_right) {
-                auto t = concatenate_left(root->left, root, root->right);
+	  
+	  auto left = root->left;
+	  auto right = root->right;
+	  set_children((TangoNode<K, V> *)nullptr, root, (TangoNode<K, V> *) nullptr);
+	  if (left != nullptr) {left->parent = nullptr;}
+	  if (right != nullptr) {right->parent = nullptr;}
+                auto t = concatenate_left(left, root, right);
                 if (is_red(t) && is_red(t->left)) {
                         t->info.red = false;
                 }
@@ -622,10 +645,10 @@ TangoNode<K, V> *TangoTree<K, V>::join_helper(TangoNode<K, V> *left,
         // if (left != nullptr) {left->println(); }
 	// root->println();
         // if (right != nullptr) { right->println(); }
-  std::cout << "Join helper call:\n";
-  print_node(left);
-  print_node(right);
-  print_node(root);
+  // std::cout << "Join helper call:\n";
+  // print_node(left);
+  // print_node(right);
+  // print_node(root);
         if (left != nullptr && left->parent != nullptr) {
                 if (left->parent->left == left) {
                         left->parent->left = nullptr;
@@ -633,7 +656,7 @@ TangoNode<K, V> *TangoTree<K, V>::join_helper(TangoNode<K, V> *left,
                 if (left->parent->right == left) {
                         left->parent->right = nullptr;
                 }
-		std::cout << "join_helper1\n";
+		// std::cout << "join_helper1\n";
 		recompute_all(left->parent);
         }
 
@@ -644,7 +667,7 @@ TangoNode<K, V> *TangoTree<K, V>::join_helper(TangoNode<K, V> *left,
                 if (right->parent->right == right) {
                         right->parent->right = nullptr;
                 }
-		std::cout << "join_helper2\n";
+		// std::cout << "join_helper2\n";
 		recompute_all(right->parent);
         }
   
@@ -658,7 +681,7 @@ TangoNode<K, V> *TangoTree<K, V>::join_helper(TangoNode<K, V> *left,
 	if (right != nullptr) {
 		right->parent = root;
 	}
-	std::cout << "join_helper3\n";
+	// std::cout << "join_helper3\n";
 	recompute_all(root);
 
 	// std::cout << "Join helper before concat:\n";
@@ -677,7 +700,7 @@ TangoTree<K, V>::split_helper(TangoNode<K, V> *root, K key)
 {
         // pivot must a node be inside root  
         assert(root != nullptr);
-	std::cout << "splitting at " << root->key << std::endl;
+	// std::cout << "splitting at " << root->key << std::endl;
         if (root->key == key) {
                 return make_pair<>(root->left, root->right);
         }
@@ -700,10 +723,13 @@ template <typename K, typename V>
 void TangoTree<K, V>::split(TangoNode<K, V> *root, TangoNode<K, V> *pivot)
 {
         auto root_parent = root->parent;
+        assert(root->info.marked);
+	root->info.marked = false;
         auto result = split_helper(root, pivot->key);
-	std::cout << "result.first: \n"; print_node(result.first);
-	std::cout << "pivot: \n"; print_node(pivot);
-	std::cout << "result.second: \n"; print_node(result.second);
+	pivot->info.marked = true;
+	// std::cout << "result.first: \n"; print_node(result.first);
+	// std::cout << "pivot: \n"; print_node(pivot);
+	// std::cout << "result.second: \n"; print_node(result.second);
         set_children(result.first, pivot, result.second);
 	// std::cout << "root: " << root->val;
 	// this->print();
