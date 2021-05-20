@@ -1,16 +1,11 @@
-# Tango Trees in C++
+# Multi-Splay Trees and Tango Trees in C++
 
-In this project, we seek to create a generic, reasonably performant implementation of the tango tree data structure in C++. 
+6.851 spring 2021 final project by Parker J. Rule [(@pjrule)](https://github.com/pjrule) and Christian Altamirano [(@bdiehs)](https://github.com/bdiehs).
 
-## Goals
-We have three (tentative) goals:
-1. Build an optimized implementation of the tango tree data structure.
-2. Benchmark this implementation against other reference tree implementations. (Consider both the number of comparisons and the wall-clock time.)
-3. Compile the tree to WASM using Emscripten and create a TypeScript wrapper, with the possibility of creating a visualization.
+We implement splay trees [(Sleator and Tarjan 1985)](https://dl.acm.org/doi/pdf/10.1145/3828.3835) and multi-splay trees [(Wang, Derryberry, and Sleator 2006)](https://www.cs.cmu.edu/~jonderry/multi-splay.pdf). We also provide a half-finished implementation of tango trees [(Demaine et al. 2005)](http://erikdemaine.org/papers/Tango_SICOMP/). Notes on what's left to be done to complete the tango tree implementation are in the `writeup` directory.
 
-## TODO
-- [ ] Define tree interface
-- [ ] Define `Item` interface (think about global comparison counter)
-- [ ] Implement balanced BST (splay?) under the hood (this should be generic enough to swap with an AVL/BB(⍺)/...)
-- [ ] Create basic unit tests
-_(more to come!)_
+## Building and running
+To build and run the testing/benchmarking code, simply run `make` and execute `./main`.
+
+## Reusing
+We implement our trees in headers. The `SplayTree` class in `src/splay.hpp` and the `MultiSplayTree` class in `src/multisplay.hpp` implement the common BST interface in `src/bst.hpp`. The half-finished implementation of tango trees in `src/rb.hpp` also implements this interface.
