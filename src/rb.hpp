@@ -413,6 +413,7 @@ TangoNode<K, V> *build_perfect(vector<TangoNode<K, V> *> &nodes, int depth,
 	}
 	if (root->right != nullptr) {
 	  root->info.max_depth = root->right->info.max_depth;
+	  root->right->info.marked = true;
 	}
 	
         // if (root->left != nullptr && root->right != nullptr) {
@@ -752,7 +753,7 @@ TangoNode<K, V> * leftmost(TangoNode<K, V> *node, int depth) {
   }
   auto left = leftmost(node->left, depth);
   if (left != nullptr) { return left; }
-  if (node->info.depth > depth) { return node; }
+  if (node->info.perfect_depth > depth) { return node; }
   return leftmost(node->right, depth);
 }
 
@@ -764,7 +765,7 @@ TangoNode<K, V> * rightmost(TangoNode<K, V> *node, int depth) {
   }
   auto right = rightmost(node->right, depth);
   if (right != nullptr) { return right; }
-  if (node->info.depth > depth) { return node; }
+  if (node->info.perfect_depth > depth) { return node; }
   return rightmost(node->left, depth);
 }
 
@@ -819,8 +820,15 @@ TangoNode<K, V> * successor(TangoNode<K, V> *node) {
 template <typename K, typename V>
 void TangoTree<K, V>::cut(TangoNode<K, V> *root, int depth) {
   assert(root->info.marked);
-  auto l = predecessor(leftmost(root)); // l'
-  auto r = successor(rightmost(root));  // r'
+  root->info.marked = false;
+  auto l = predecessor(leftmost(root, depth)); // l'
+  auto r = successor(rightmost(root, depth));  // r'
+  std::cout << "l, r:\n";
+  print_node(leftmost(root, depth));
+  print_node(rightmost(root, depth));
+  print_node(l);
+  print_node(r);
+  root->info.marked = true;
 
   if (l != nullptr && r != nullptr) {
 	  // Range is (l, r).
