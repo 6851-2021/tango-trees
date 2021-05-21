@@ -1,11 +1,13 @@
 #include "bst.hpp"
+#include <assert.h>
 #include <vector>
 #include <algorithm>
 #include <iostream>
 #include <utility>
 
 using std::vector;
-using std::pair, std::make_pair;
+using std::pair;
+using std::make_pair;
 
 #ifndef TANGO_TREES_RB_H
 #define TANGO_TREES_RB_H
